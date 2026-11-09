@@ -151,7 +151,30 @@ export function relatorioDoDia(
   geradoEm: string,
 ): DadosRelatorio {
   const visao = visaoDia(base, data, filtro);
-  return montar("dia", data, formatarData(data), geradoEm, filtro, base, visao.itens);
+  const dados = montar("dia", data, formatarData(data), geradoEm, filtro, base, visao.itens);
+  return { ...dados, indicadores: indicadoresDoDia(visao.itens, dados.linhas) };
+}
+
+/** Indicadores da visão do dia: somam só as parcelas listadas naquele dia. */
+function indicadoresDoDia(
+  itens: readonly ItemCobranca[],
+  linhas: readonly LinhaRelatorio[],
+): Indicadores {
+  const total = somar(itens.map((i) => i.parcela.valor));
+  const aPagar = somar(
+    itens.filter((i) => i.status !== "paga").map((i) => i.parcela.valor),
+  );
+  const pago = somar(
+    itens.filter((i) => i.status === "paga").map((i) => i.parcela.valor),
+  );
+  return {
+    clientes: new Set(itens.map((i) => i.cliente.id)).size,
+    valorTotalRegistrado: total,
+    valorAPagar: aPagar,
+    valorPagoRegistrado: pago,
+    comissoes: calcularIndicadores(linhas).comissoes,
+    totalAPagarEmprestimos: total,
+  };
 }
 
 export function relatorioDoMes(

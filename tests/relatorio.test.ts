@@ -33,22 +33,13 @@ describe("relatório (linhas e indicadores)", () => {
     expect(r.linhas[2]).toMatchObject({ comissao: 0, observacao: "cliente rosangela" });
   });
 
-  it("os indicadores são exatamente a soma das linhas da tabela", () => {
+  it("na visão do dia, os indicadores somam só as parcelas listadas no dia", () => {
     const i = r.indicadores;
-    expect(i.clientes).toBe(r.linhas.length);
-    expect(i.valorTotalRegistrado).toBe(somar(r.linhas.map((l) => l.pegou)));
-    expect(i.valorAPagar).toBe(somar(r.linhas.map((l) => l.saldoDevedor)));
-    expect(i.valorPagoRegistrado).toBe(somar(r.linhas.map((l) => l.totalPago)));
+    expect(i.clientes).toBe(4);
+    expect(i.valorTotalRegistrado).toBe(2800);
+    expect(i.valorAPagar + i.valorPagoRegistrado).toBe(i.valorTotalRegistrado);
+    expect(i.totalAPagarEmprestimos).toBe(i.valorTotalRegistrado);
     expect(i.comissoes).toBe(somar(r.linhas.map((l) => l.comissao)));
-    // valores esperados do cenário
-    expect(i).toMatchObject({
-      clientes: 4,
-      valorTotalRegistrado: 4800,
-      valorAPagar: 5200,
-      valorPagoRegistrado: 600,
-      comissoes: 100,
-      totalAPagarEmprestimos: 5800,
-    });
   });
 
   it("a coluna 'VALOR A PAGAR' (total) = saldo devedor + valor pago", () => {
@@ -57,22 +48,20 @@ describe("relatório (linhas e indicadores)", () => {
     );
   });
 
-  it("com filtro, os totais acompanham apenas as linhas exibidas", () => {
+  it("com filtro, os totais do dia acompanham apenas as linhas exibidas", () => {
     const dividas = relatorioDoDia(cenario(), HOJE, "dividas", HOJE);
     expect(dividas.linhas.map((l) => l.cliente)).toEqual(["Humberto Lemos de Moraes"]);
     expect(dividas.indicadores).toMatchObject({
       clientes: 1,
-      valorTotalRegistrado: 500,
+      valorTotalRegistrado: 600,
       valorAPagar: 600,
       valorPagoRegistrado: 0,
       comissoes: 0,
     });
-    expect(dividas.indicadores).toEqual(calcularIndicadores(dividas.linhas));
   });
 
-  it("cliente com 2 empréstimos conta uma vez em CLIENTES mas soma os dois valores", () => {
+  it("cliente com 2 empréstimos conta uma vez em CLIENTES mas soma os dois valores do dia", () => {
     const base = cenario();
-    // segundo empréstimo para Lucio, também vencendo hoje
     const clone = structuredClone(base);
     const e2 = clone.emprestimos.find((e) => e.id === "e2")!;
     clone.emprestimos.push({ ...e2, id: "e2b", valor_emprestado: 200 });
@@ -81,7 +70,7 @@ describe("relatório (linhas e indicadores)", () => {
     const rel = relatorioDoDia(clone, HOJE, "todas", HOJE);
     expect(rel.linhas.filter((l) => l.clienteId === "c2")).toHaveLength(2);
     expect(rel.indicadores.clientes).toBe(4);
-    expect(rel.indicadores.valorTotalRegistrado).toBe(5000);
+    expect(rel.indicadores.valorTotalRegistrado).toBe(2800 + p.valor);
   });
 
   it("relatório do mês inclui as parcelas do mês e as atrasadas/dívidas anteriores", () => {
