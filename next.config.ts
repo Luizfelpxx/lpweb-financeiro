@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // O sistema é 100% autenticado e dinâmico: não usamos Cache Components.
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +9,12 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // A logo usada no PDF é lida do disco em tempo de execução (serverless na Vercel).
+  outputFileTracingIncludes: {
+    "/api/pdf": ["./public/logo/**/*"],
+    "/api/cron/relatorio-diario": ["./public/logo/**/*"],
+    "/configuracoes": ["./public/logo/**/*"],
   },
 };
 

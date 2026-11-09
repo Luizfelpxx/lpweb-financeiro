@@ -1,26 +1,79 @@
 @import "tailwindcss";
 
+/* Paleta extraída da logo */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --marinho: #1e3a5f;
+  --marinho-escuro: #0f1b2d;
+  --agua: #5fb8a8;
+  --agua-claro: #e6f4f1;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* superfícies (modo claro) */
+  --fundo: #f4f7fa;
+  --cartao: #ffffff;
+  --borda: #dde5ee;
+  --texto: #0f1b2d;
+  --suave: #5b6b7f;
+  --destaque: #e6f4f1;
+  --primario: #1e3a5f;
+  --primario-texto: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --fundo: #0a1220;
+    --cartao: #0f1b2d;
+    --borda: #23364f;
+    --texto: #e8eef5;
+    --suave: #94a3b8;
+    --destaque: #112b33;
+    --primario: #5fb8a8;
+    --primario-texto: #0f1b2d;
   }
 }
 
+@theme inline {
+  --color-marinho: var(--marinho);
+  --color-marinho-escuro: var(--marinho-escuro);
+  --color-agua: var(--agua);
+  --color-agua-claro: var(--agua-claro);
+  --color-fundo: var(--fundo);
+  --color-cartao: var(--cartao);
+  --color-borda: var(--borda);
+  --color-texto: var(--texto);
+  --color-suave: var(--suave);
+  --color-destaque: var(--destaque);
+  --color-primario: var(--primario);
+  --color-primario-texto: var(--primario-texto);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* foco visível e consistente */
+:focus-visible {
+  outline: 2px solid var(--agua);
+  outline-offset: 2px;
+}
+
+/* evita "pulos" de layout no iOS ao focar campos */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
 }
