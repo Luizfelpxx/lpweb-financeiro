@@ -218,3 +218,50 @@ export async function alternarPagamento(
   revalidatePath("/", "layout");
   return {};
 }
+
+/** Data de pagamento válida: formato certo, não no futuro e não absurda. */
+function validarDataPagamento(data: string): string | null {
+  const iso = lerData(data);
+  if (!iso) return "Data de pagamento inválida.";
+  if (iso > hojeSP()) return "A data de pagamento não pode ser no futuro.";
+  if (iso < "2000-01-01") return "Data de pagamento inválida.";
+  return null;
+}
+
+/** Marca a parcela como paga na data informada (o dia em que a pessoa pagou de verdade). */
+export async function marcarPagaEm(parcelaId: string, data: string): Promise<ResultadoAcao> {
+  const { supabase } = await exigirUsuario();
+  if (!UUID.test(parcelaId)) return { erro: "Parcela inválida." };
+  const erro = validarDataPagamento(data);
+  if (erro) return { erro };
+  const { error } = await supabase
+    .from("parcelas")
+    .update({ status_pagamento: "paga", data_pagamento: lerData(data) })
+    .eq("id", parcelaId)
+    .eq("status_pagamento", "aberta");
+  if (error) {
+    console.error("[marcarPagaEm]", error.message);
+    return { erro: ERRO_GENERICO };
+  }
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Corrige a data de pagamento de uma parcela que já está paga. */
+export async function alterarDataPagamento(parcelaId: string, data: string): Promise<ResultadoAcao> {
+  const { supabase } = await exigirUsuario();
+  if (!UUID.test(parcelaId)) return { erro: "Parcela inválida." };
+  const erro = validarDataPagamento(data);
+  if (erro) return { erro };
+  const { error } = await supabase
+    .from("parcelas")
+    .update({ data_pagamento: lerData(data) })
+    .eq("id", parcelaId)
+    .eq("status_pagamento", "paga");
+  if (error) {
+    console.error("[alterarDataPagamento]", error.message);
+    return { erro: ERRO_GENERICO };
+  }
+  revalidatePath("/", "layout");
+  return {};
+}

@@ -1,23 +1,21 @@
 import Link from "next/link";
-import BotaoAcao from "@/components/BotaoAcao";
 import { StatusBadge } from "@/components/Ui";
 import { cartao } from "@/components/estilos";
-import { alternarPagamento } from "@/app/(app)/actions";
 import type { ItemCobranca } from "@/lib/domain/cobrancas";
-import { formatarData } from "@/lib/domain/datas";
+import { formatarData, hojeSP } from "@/lib/domain/datas";
 import { formatarBRL } from "@/lib/domain/dinheiro";
 import { quantidadeDeParcelas } from "@/lib/domain/emprestimo";
 import { telefoneValido } from "@/lib/domain/cobrancaPdf";
+import PagamentoParcela from "./PagamentoParcela";
 
 function Acao({ item }: { item: ItemCobranca }) {
-  return item.parcela.status_pagamento === "aberta" ? (
-    <BotaoAcao acao={alternarPagamento.bind(null, item.parcela.id, true)} variante="ok" pequeno>
-      Marcar como paga
-    </BotaoAcao>
-  ) : (
-    <BotaoAcao acao={alternarPagamento.bind(null, item.parcela.id, false)} pequeno>
-      Desmarcar
-    </BotaoAcao>
+  return (
+    <PagamentoParcela
+      parcelaId={item.parcela.id}
+      paga={item.parcela.status_pagamento === "paga"}
+      dataPagamento={item.parcela.data_pagamento}
+      hoje={hojeSP()}
+    />
   );
 }
 
@@ -64,7 +62,7 @@ export default function ListaCobrancas({ itens }: { itens: ItemCobranca[] }) {
                 <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
                   {formatarBRL(i.totalDevidoCliente)}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2">
                   <Acao item={i} />
                 </td>
               </tr>

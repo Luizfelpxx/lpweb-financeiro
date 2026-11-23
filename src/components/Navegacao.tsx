@@ -10,6 +10,7 @@ const ITENS = [
   { href: "/comissoes", rotulo: "Comissões", icone: "%" },
   { href: "/historico", rotulo: "Histórico", icone: "↺" },
   { href: "/importar", rotulo: "Importar", icone: "⇪" },
+  { href: "/exportar", rotulo: "Exportar", icone: "⇩" },
   { href: "/configuracoes", rotulo: "Configurações", icone: "⚙" },
 ];
 

@@ -14,6 +14,7 @@ const PRINCIPAIS = [
 const MAIS = [
   { href: "/historico", rotulo: "Histórico", icone: "↺" },
   { href: "/importar", rotulo: "Importar planilha", icone: "⇪" },
+  { href: "/exportar", rotulo: "Exportar planilha (Excel)", icone: "⇩" },
   { href: "/configuracoes", rotulo: "Configurações", icone: "⚙" },
 ];
 

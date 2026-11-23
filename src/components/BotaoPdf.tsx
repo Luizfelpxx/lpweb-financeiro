@@ -6,9 +6,12 @@ import { botaoPrimario, botaoSecundario } from "./estilos";
 const semInscricao = () => () => {};
 
 /** O aparelho consegue compartilhar arquivos PDF (WhatsApp, e-mail…)? */
-function suportaCompartilharPdf(): boolean {
+const MIME_PDF = "application/pdf";
+const MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function suportaCompartilhar(tipo: string): boolean {
   try {
-    const teste = new File([""], "teste.pdf", { type: "application/pdf" });
+    const teste = new File([""], tipo === MIME_PDF ? "teste.pdf" : "teste.xlsx", { type: tipo });
     return typeof navigator.canShare === "function" && navigator.canShare({ files: [teste] });
   } catch {
     return false;
@@ -23,14 +26,19 @@ export default function BotaoPdf({
   url,
   nomePadrao,
   rotulo = "",
+  arquivo = "pdf",
 }: {
   url: string;
   nomePadrao: string;
   /** complemento do texto do botão, ex.: "do dia" → "Enviar PDF do dia" */
   rotulo?: string;
+  /** tipo do arquivo baixado */
+  arquivo?: "pdf" | "planilha";
 }) {
+  const mime = arquivo === "pdf" ? MIME_PDF : MIME_XLSX;
+  const nomeTipo = arquivo === "pdf" ? "PDF" : "planilha";
   const sufixo = rotulo ? ` ${rotulo}` : "";
-  const podeCompartilhar = useSyncExternalStore(semInscricao, suportaCompartilharPdf, () => false);
+  const podeCompartilhar = useSyncExternalStore(semInscricao, () => suportaCompartilhar(mime), () => false);
   const [ocupado, setOcupado] = useState<null | "baixar" | "enviar">(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -38,11 +46,11 @@ export default function BotaoPdf({
     const resp = await fetch(url, { credentials: "same-origin", cache: "no-store" });
     if (!resp.ok) {
       const corpo = await resp.json().catch(() => null);
-      throw new Error(corpo?.erro ?? "Não foi possível gerar o PDF");
+      throw new Error(corpo?.erro ?? `Não foi possível gerar o ${nomeTipo}`);
     }
     const nome = resp.headers.get("X-Nome-Arquivo") ?? nomePadrao;
     const blob = await resp.blob();
-    return new File([blob], nome, { type: "application/pdf" });
+    return new File([blob], nome, { type: mime });
   }
 
   async function baixar() {
@@ -59,7 +67,7 @@ export default function BotaoPdf({
       a.remove();
       setTimeout(() => URL.revokeObjectURL(link), 10_000);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Erro ao baixar o PDF");
+      setErro(e instanceof Error ? e.message : `Erro ao baixar o ${nomeTipo}`);
     } finally {
       setOcupado(null);
     }
@@ -74,7 +82,7 @@ export default function BotaoPdf({
     } catch (e) {
       // "AbortError" = a pessoa fechou o menu de compartilhar; não é erro.
       if (!(e instanceof DOMException && e.name === "AbortError")) {
-        setErro(e instanceof Error ? e.message : "Erro ao compartilhar o PDF");
+        setErro(e instanceof Error ? e.message : `Erro ao compartilhar o ${nomeTipo}`);
       }
     } finally {
       setOcupado(null);
@@ -86,7 +94,7 @@ export default function BotaoPdf({
       <span className="flex flex-wrap gap-2">
         {podeCompartilhar && (
           <button type="button" onClick={enviar} disabled={ocupado !== null} className={botaoPrimario}>
-            {ocupado === "enviar" ? "Gerando…" : `📤 Enviar PDF${sufixo}`}
+            {ocupado === "enviar" ? "Gerando…" : `📤 Enviar ${nomeTipo}${sufixo}`}
           </button>
         )}
         <button
@@ -95,7 +103,7 @@ export default function BotaoPdf({
           disabled={ocupado !== null}
           className={podeCompartilhar ? botaoSecundario : botaoPrimario}
         >
-          {ocupado === "baixar" ? "Gerando…" : podeCompartilhar ? "⬇ Baixar" : `⬇ Baixar PDF${sufixo}`}
+          {ocupado === "baixar" ? "Gerando…" : podeCompartilhar ? "⬇ Baixar" : `⬇ Baixar ${nomeTipo}${sufixo}`}
         </button>
       </span>
       {erro && (

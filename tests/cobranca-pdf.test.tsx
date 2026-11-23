@@ -113,3 +113,43 @@ describe("visão da semana e filtro 'só o período'", () => {
     writeFileSync("tmp/cobranca-semana.pdf", pdf);
   });
 });
+
+describe("colunas do PDF para a Rosangela", () => {
+  it("traz pago/não pago, data do pagamento, parcelas que faltam e quanto falta", () => {
+    const d = cobrancaDoMes(cenario(), "2026-11", HOJE, "todas", "todos");
+    const gisele = d.grupos.flatMap((g) => g.linhas).find((l) => l.cliente === "Gisele Lima")!;
+    // empréstimo de 3 parcelas de 600, 1 paga
+    expect(gisele.pago).toBe(false);
+    expect(gisele.dataPagamento).toBeNull();
+    expect(gisele.parcelasFaltam).toBe(2);
+    expect(gisele.parcelasTotal).toBe(3);
+    expect(gisele.faltaPagar).toBe(1200);
+
+    const out = cobrancaDoMes(cenario(), "2026-10", HOJE, "todas", "todos");
+    const seb = out.grupos.flatMap((g) => g.linhas).find((l) => l.cliente === "Sebastiao")!;
+    expect(seb.pago).toBe(true);
+    expect(seb.dataPagamento).not.toBeNull();
+    expect(seb.parcelasFaltam).toBe(0);
+    expect(seb.faltaPagar).toBe(0);
+  });
+
+  it("gera o PDF do mês com pagos e não pagos", async () => {
+    const base = cenario();
+    const d = cobrancaDoMes(base, "2026-10", HOJE, "todas", "todos");
+    const pdf = await gerarPdfCobranca(d);
+    expect(pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    writeFileSync("tmp/cobranca-mes-out.pdf", pdf);
+  });
+});
+
+describe("resumo por devedor", () => {
+  it("lista cada devedor uma vez, do mais atrasado para o menos", () => {
+    const d = cobrancaDoMes(cenario(), "2026-11", HOJE, "todas", "todos");
+    expect(d.devedores.map((x) => x.cliente)).toEqual(["Humberto Lemos de Moraes", "Gisele Lima"]);
+    const gisele = d.devedores[1];
+    expect(gisele.parcelasAtrasadas).toBe(1);
+    expect(gisele.vencidaDesde).toBe("2026-10-10");
+    expect(gisele.emAtraso).toBe(600);
+    expect(gisele.deveNoTotal).toBe(1200);
+  });
+});

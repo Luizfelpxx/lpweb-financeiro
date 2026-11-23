@@ -1,5 +1,5 @@
-import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { ROTULO_INDICACAO, type DadosCobranca, type GrupoCobranca } from "@/lib/domain/cobrancaPdf";
+import { Document, Image, Page, StyleSheet, Text, View, type Styles } from "@react-pdf/renderer";
+import { ROTULO_INDICACAO, type DadosCobranca, type Devedor, type GrupoCobranca } from "@/lib/domain/cobrancaPdf";
 import { ROTULO_FILTRO } from "@/lib/domain/cobrancas";
 import { formatarData, formatarDataPDF } from "@/lib/domain/datas";
 import { formatarBRL } from "@/lib/domain/dinheiro";
@@ -20,13 +20,14 @@ const COR: Record<StatusCobranca, { forte: string; fundo: string }> = {
 
 /** A4 retrato com margens de 28pt → 539pt úteis. */
 const COLUNAS = [
-  { titulo: "CLIENTE", largura: 140, alinhar: "left" },
+  { titulo: "CLIENTE", largura: 128, alinhar: "left" },
   { titulo: "PARCELA", largura: 44, alinhar: "center" },
-  { titulo: "VALOR", largura: 68, alinhar: "right" },
-  { titulo: "VENCIMENTO", largura: 62, alinhar: "center" },
-  { titulo: "SITUAÇÃO", largura: 103, alinhar: "left" },
-  { titulo: "DEVE NO TOTAL", largura: 72, alinhar: "right" },
-  { titulo: "INDICAÇÃO", largura: 50, alinhar: "left" },
+  { titulo: "VALOR DA PARCELA", largura: 64, alinhar: "right" },
+  { titulo: "VENCIMENTO", largura: 60, alinhar: "center" },
+  { titulo: "PAGOU?", largura: 62, alinhar: "center" },
+  { titulo: "PAGO EM", largura: 64, alinhar: "center" },
+  { titulo: "FALTAM", largura: 48, alinhar: "center" },
+  { titulo: "FALTA PAGAR", largura: 69, alinhar: "right" },
 ] as const;
 
 const s = StyleSheet.create({
@@ -208,30 +209,90 @@ function Grupo({ grupo }: { grupo: GrupoCobranca }) {
 function LinhaGrupo({ grupo, indice }: { grupo: GrupoCobranca; indice: number }) {
   const l = grupo.linhas[indice];
   const cor = COR[grupo.status];
-  const valores = [
-    l.cliente,
-    l.parcela,
-    formatarBRL(l.valor),
-    formatarData(l.vencimento),
-    l.situacao,
-    l.saldoCliente > 0 ? formatarBRL(l.saldoCliente) : "Quitado",
-    l.indicacao,
+  const celula = (k: number, extra: Styles[string] = {}): Styles[string][] => [
+    s.celula,
+    { width: COLUNAS[k].largura, textAlign: COLUNAS[k].alinhar },
+    extra,
   ];
+  const faltam =
+    l.parcelasFaltam === 0 ? "Quitado" : l.parcelasTotal === 1 ? "1 de 1" : `${l.parcelasFaltam} de ${l.parcelasTotal}`;
   return (
     <View style={[s.linha, indice % 2 === 1 ? { backgroundColor: "#F8FAFB" } : {}]} wrap={false}>
-      {valores.map((v, k) => (
-        <Text
-          key={k}
-          style={[
-            s.celula,
-            { width: COLUNAS[k].largura, textAlign: COLUNAS[k].alinhar },
-            k === 0 || k === 4 ? s.negrito : {},
-            k === 4 ? { color: cor.forte } : {},
-          ]}
-        >
-          {v}
-        </Text>
-      ))}
+      <Text style={celula(0, s.negrito)}>{l.cliente}</Text>
+      <Text style={celula(1)}>{l.parcela}</Text>
+      <Text style={celula(2)}>{formatarBRL(l.valor)}</Text>
+      <Text style={celula(3)}>{formatarData(l.vencimento)}</Text>
+      <View style={{ width: COLUNAS[4].largura, alignItems: "center" }}>
+        <Text style={[s.negrito, { color: l.pago ? COR.paga.forte : cor.forte }]}>{l.pago ? "Pago" : "Não pago"}</Text>
+        {l.diasAtraso > 0 && (
+          <Text style={{ fontSize: 6.5, color: cor.forte, marginTop: 1 }}>
+            {l.diasAtraso} {l.diasAtraso === 1 ? "dia" : "dias"} de atraso
+          </Text>
+        )}
+      </View>
+      <Text style={celula(5, l.dataPagamento ? { color: COR.paga.forte } : { color: SUAVE })}>
+        {l.dataPagamento ? formatarData(l.dataPagamento) : "—"}
+      </Text>
+      <Text style={celula(6)}>{faltam}</Text>
+      <Text style={celula(7, s.negrito)}>{l.faltaPagar > 0 ? formatarBRL(l.faltaPagar) : "R$ 0,00"}</Text>
+    </View>
+  );
+}
+
+const COLUNAS_DEVEDOR = [
+  { titulo: "CLIENTE", largura: 159, alinhar: "left" },
+  { titulo: "PARCELAS ATRASADAS", largura: 80, alinhar: "center" },
+  { titulo: "VENCIDA DESDE", largura: 90, alinhar: "center" },
+  { titulo: "EM ATRASO", largura: 100, alinhar: "right" },
+  { titulo: "DEVE NO TOTAL", largura: 110, alinhar: "right" },
+] as const;
+
+function ResumoDevedores({ devedores }: { devedores: Devedor[] }) {
+  const total = devedores.reduce((acc, d) => acc + Math.round(d.emAtraso * 100), 0) / 100;
+  return (
+    <View>
+      <View wrap={false}>
+        <View style={[s.grupoTitulo, { backgroundColor: MARINHO }]}>
+          <Text style={s.grupoTexto}>RESUMO POR DEVEDOR</Text>
+          <Text style={s.grupoTexto}>
+            {devedores.length} {devedores.length === 1 ? "pessoa" : "pessoas"} • {formatarBRL(total)} em atraso
+          </Text>
+        </View>
+        <View style={s.tabelaCab}>
+          {COLUNAS_DEVEDOR.map((c) => (
+            <Text key={c.titulo} style={[s.tabelaCabTexto, { width: c.largura, textAlign: c.alinhar }]}>
+              {c.titulo}
+            </Text>
+          ))}
+        </View>
+      </View>
+      {devedores.map((d, k) => {
+        const cor = d.maiorAtraso > 30 ? COR.divida.forte : COR.atrasada.forte;
+        const valores = [
+          d.cliente,
+          String(d.parcelasAtrasadas),
+          `${formatarData(d.vencidaDesde)} (${d.maiorAtraso}d)`,
+          formatarBRL(d.emAtraso),
+          formatarBRL(d.deveNoTotal),
+        ];
+        return (
+          <View key={k} style={[s.linha, k % 2 === 1 ? { backgroundColor: "#F8FAFB" } : {}]} wrap={false}>
+            {valores.map((v, c) => (
+              <Text
+                key={c}
+                style={[
+                  s.celula,
+                  { width: COLUNAS_DEVEDOR[c].largura, textAlign: COLUNAS_DEVEDOR[c].alinhar },
+                  c === 0 || c >= 3 ? s.negrito : {},
+                  c === 3 ? { color: cor } : {},
+                ]}
+              >
+                {v}
+              </Text>
+            ))}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -253,6 +314,7 @@ export function CobrancaPdf({ dados, logo }: { dados: DadosCobranca; logo: Buffe
           ) : (
             dados.grupos.map((g) => <Grupo key={g.status} grupo={g} />)
           )}
+          {dados.devedores.length > 0 && <ResumoDevedores devedores={dados.devedores} />}
         </View>
         <View style={s.rodape} fixed>
           <Text>LPweb.dev • Lista de cobrança • {dados.periodo}</Text>
