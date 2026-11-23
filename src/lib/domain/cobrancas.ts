@@ -1,18 +1,19 @@
-import { limitesDoMes } from "./datas";
+import { limitesDaSemana, limitesDoMes } from "./datas";
 import { emCentavos, somar } from "./dinheiro";
 import { diasDeAtraso, statusCobranca } from "./status";
 import type { Base, Cliente, Emprestimo, Parcela, StatusCobranca } from "./tipos";
 
-export type FiltroCobranca = "todas" | "atrasadas" | "dividas";
+export type FiltroCobranca = "todas" | "periodo" | "atrasadas" | "dividas";
 
 export const ROTULO_FILTRO: Record<FiltroCobranca, string> = {
-  todas: "Todas as cobranças",
+  todas: "Tudo (período + atrasados)",
+  periodo: "Só o que vence no período",
   atrasadas: "Somente atrasadas",
   dividas: "Somente dívidas",
 };
 
 export function lerFiltro(valor: string | null | undefined): FiltroCobranca {
-  return valor === "atrasadas" || valor === "dividas" ? valor : "todas";
+  return valor === "atrasadas" || valor === "dividas" || valor === "periodo" ? valor : "todas";
 }
 
 export interface ItemCobranca {
@@ -134,7 +135,7 @@ export function visaoDia(
     data,
     (p) =>
       p.data_vencimento === data ||
-      (p.status_pagamento === "aberta" && p.data_vencimento < data),
+      (filtro !== "periodo" && p.status_pagamento === "aberta" && p.data_vencimento < data),
   )
     .filter((i) => passaFiltro(i.status, filtro))
     .sort(ordenar);
@@ -156,7 +157,7 @@ export function visaoDia(
   };
 }
 
-/* ------------------------------ Visão do MÊS ------------------------------ */
+/* --------------------------- Visão de um PERÍODO --------------------------- */
 
 export interface DiaDoMes {
   data: string;
@@ -165,11 +166,12 @@ export interface DiaDoMes {
   recebido: number;
 }
 
-export interface VisaoMes {
-  mes: string;
+export interface VisaoPeriodo {
+  inicio: string;
+  fim: string;
   filtro: FiltroCobranca;
   dias: DiaDoMes[];
-  /** Abertas de meses anteriores que seguem atrasadas ou em dívida. */
+  /** Abertas de antes do período que seguem atrasadas ou em dívida. */
   anteriores: ItemCobranca[];
   totais: {
     previsto: number;
@@ -180,30 +182,33 @@ export interface VisaoMes {
   };
 }
 
-/** Status calculado em relação a `hoje`; agrupa por dia de vencimento. */
-export function visaoMes(
+/** Parcelas que vencem entre `inicio` e `fim` (status em relação a `hoje`), agrupadas por dia. */
+export function visaoPeriodo(
   base: Base,
-  mes: string,
+  inicio: string,
+  fim: string,
   hoje: string,
   filtro: FiltroCobranca = "todas",
-): VisaoMes {
-  const { inicio, fim } = limitesDoMes(mes);
-  const doMes = montarItens(
+): VisaoPeriodo {
+  const doPeriodo = montarItens(
     base,
     hoje,
     (p) => p.data_vencimento >= inicio && p.data_vencimento <= fim,
   ).filter((i) => passaFiltro(i.status, filtro));
-  const anteriores = montarItens(
-    base,
-    hoje,
-    (p) => p.status_pagamento === "aberta" && p.data_vencimento < inicio,
-  )
-    .filter((i) => i.status === "atrasada" || i.status === "divida")
-    .filter((i) => passaFiltro(i.status, filtro))
-    .sort(ordenar);
+  const anteriores =
+    filtro === "periodo"
+      ? []
+      : montarItens(
+          base,
+          hoje,
+          (p) => p.status_pagamento === "aberta" && p.data_vencimento < inicio,
+        )
+          .filter((i) => i.status === "atrasada" || i.status === "divida")
+          .filter((i) => passaFiltro(i.status, filtro))
+          .sort(ordenar);
 
   const porDia = new Map<string, ItemCobranca[]>();
-  for (const item of doMes) {
+  for (const item of doPeriodo) {
     const lista = porDia.get(item.parcela.data_vencimento) ?? [];
     lista.push(item);
     porDia.set(item.parcela.data_vencimento, lista);
@@ -221,9 +226,10 @@ export function visaoMes(
 
   const previsto = somar(dias.map((d) => d.previsto));
   const recebido = somar(dias.map((d) => d.recebido));
-  const todos = [...doMes, ...anteriores];
+  const todos = [...doPeriodo, ...anteriores];
   return {
-    mes,
+    inicio,
+    fim,
     filtro,
     dias,
     anteriores,
@@ -235,4 +241,33 @@ export function visaoMes(
       dividas: contar(todos, "divida"),
     },
   };
+}
+
+/* ------------------------------ Visão do MÊS ------------------------------ */
+
+export type VisaoMes = VisaoPeriodo & { mes: string };
+
+export function visaoMes(
+  base: Base,
+  mes: string,
+  hoje: string,
+  filtro: FiltroCobranca = "todas",
+): VisaoMes {
+  const { inicio, fim } = limitesDoMes(mes);
+  return { mes, ...visaoPeriodo(base, inicio, fim, hoje, filtro) };
+}
+
+/* ----------------------------- Visão da SEMANA ----------------------------- */
+
+export type VisaoSemana = VisaoPeriodo;
+
+/** Semana de segunda a domingo que contém `data`. */
+export function visaoSemana(
+  base: Base,
+  data: string,
+  hoje: string,
+  filtro: FiltroCobranca = "todas",
+): VisaoSemana {
+  const { inicio, fim } = limitesDaSemana(data);
+  return visaoPeriodo(base, inicio, fim, hoje, filtro);
 }

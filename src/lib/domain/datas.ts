@@ -160,3 +160,17 @@ export function lerData(texto: string | null | undefined): string | null {
   const iso = `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
   return eDataISO(iso) ? iso : null;
 }
+
+/** Segunda-feira (início) e domingo (fim) da semana que contém `iso`. */
+export function limitesDaSemana(iso: string): { inicio: string; fim: string } {
+  const { ano, mes, dia } = partes(iso);
+  const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay(); // 0 = domingo
+  const inicio = somarDias(iso, -((diaSemana + 6) % 7));
+  return { inicio, fim: somarDias(inicio, 6) };
+}
+
+/** "16/11 a 22/11/2026" */
+export function formatarSemana(inicio: string, fim: string): string {
+  const a = formatarData(inicio);
+  return `${a.slice(0, 5)} a ${formatarData(fim)}`;
+}

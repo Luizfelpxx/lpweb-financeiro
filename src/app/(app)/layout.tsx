@@ -1,4 +1,5 @@
 import Image from "next/image";
+import BarraInferior from "@/components/BarraInferior";
 import Navegacao from "@/components/Navegacao";
 import { exigirUsuario } from "@/lib/auth";
 import { sair } from "../login/actions";
@@ -66,12 +67,13 @@ export default async function LayoutDoSistema({ children }: { children: React.Re
                 </p>
               </div>
             </div>
-            <BotaoSair />
           </div>
-          <Navegacao orientacao="topo" />
         </header>
 
-        <main className="mx-auto w-full max-w-6xl p-4 pb-16 md:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8">
+          {children}
+        </main>
+        <BarraInferior rodapeMenu={<BotaoSair className="w-full px-4 py-3 text-left" />} />
       </div>
     </div>
   );

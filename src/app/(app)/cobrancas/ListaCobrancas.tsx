@@ -7,6 +7,7 @@ import type { ItemCobranca } from "@/lib/domain/cobrancas";
 import { formatarData } from "@/lib/domain/datas";
 import { formatarBRL } from "@/lib/domain/dinheiro";
 import { quantidadeDeParcelas } from "@/lib/domain/emprestimo";
+import { telefoneValido } from "@/lib/domain/cobrancaPdf";
 
 function Acao({ item }: { item: ItemCobranca }) {
   return item.parcela.status_pagamento === "aberta" ? (
@@ -49,7 +50,9 @@ export default function ListaCobrancas({ itens }: { itens: ItemCobranca[] }) {
                     {i.cliente.nome}
                   </Link>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{i.cliente.telefone}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {telefoneValido(i.cliente.telefone) ? i.cliente.telefone : <span className="text-suave">—</span>}
+                </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {formatarBRL(i.parcela.valor)}
                   <span className="block text-xs text-suave">parcela {nParcela(i)}</span>
@@ -82,9 +85,11 @@ export default function ListaCobrancas({ itens }: { itens: ItemCobranca[] }) {
                 <Link href={`/clientes/${i.cliente.id}`} className="font-semibold underline-offset-2 hover:underline">
                   {i.cliente.nome}
                 </Link>
-                <p className="text-xs text-suave">
-                  <a href={`tel:${i.cliente.telefone.replace(/[^\d+]/g, "")}`}>{i.cliente.telefone}</a>
-                </p>
+                {telefoneValido(i.cliente.telefone) && (
+                  <p className="text-xs text-suave">
+                    <a href={`tel:${i.cliente.telefone.replace(/[^\d+]/g, "")}`}>{i.cliente.telefone}</a>
+                  </p>
+                )}
               </div>
               <StatusBadge status={i.status} dias={i.diasAtraso} />
             </div>
