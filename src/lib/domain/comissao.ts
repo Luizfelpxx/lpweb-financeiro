@@ -25,3 +25,19 @@ export const NOME_INDICADOR: Record<IndicadoPor, string> = {
   geize: "Geize",
   rosangela: "Rosangela",
 };
+
+/**
+ * Valida a comissão digitada à mão para um empréstimo (ex.: "50", "50,00", "R$ 75,50").
+ * Pode ser zero, mas nunca negativa nem maior que o valor emprestado.
+ */
+export function validarComissaoManual(
+  valor: number | null,
+  valorEmprestado: number,
+): { ok: true; valor: number } | { ok: false; erro: string } {
+  if (valor == null || !Number.isFinite(valor)) return { ok: false, erro: "Digite um valor válido, ex.: 50,00." };
+  if (valor < 0) return { ok: false, erro: "A comissão não pode ser negativa." };
+  if (emCentavos(valor) > emCentavos(valorEmprestado)) {
+    return { ok: false, erro: "A comissão não pode ser maior que o valor emprestado." };
+  }
+  return { ok: true, valor: emCentavos(valor) / 100 };
+}

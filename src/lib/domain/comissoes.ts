@@ -1,5 +1,6 @@
+import { calcularComissao } from "./comissao";
 import { limitesDoMes } from "./datas";
-import { somar } from "./dinheiro";
+import { emCentavos, somar } from "./dinheiro";
 import type { Base, IndicadoPor } from "./tipos";
 
 export const FUNCIONARIAS: IndicadoPor[] = ["geize", "rosangela"];
@@ -11,6 +12,10 @@ export interface LinhaComissao {
   dataEmprestimo: string;
   valorEmprestado: number;
   comissao: number;
+  /** quanto daria pela regra (R$ 50 até R$ 1.000 e R$ 100 acima) */
+  comissaoAutomatica: number;
+  /** true quando a comissão foi definida à mão e é diferente da regra */
+  manual: boolean;
 }
 
 export interface RelatorioComissao {
@@ -43,6 +48,8 @@ export function relatorioComissoes(
         dataEmprestimo: e.data_emprestimo,
         valorEmprestado: e.valor_emprestado,
         comissao: e.comissao,
+        comissaoAutomatica: calcularComissao(e.valor_emprestado, funcionaria),
+        manual: emCentavos(e.comissao) !== emCentavos(calcularComissao(e.valor_emprestado, funcionaria)),
       });
     }
     linhas.sort(
