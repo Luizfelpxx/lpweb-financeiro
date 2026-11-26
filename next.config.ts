@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
   // A logo usada no PDF é lida do disco em tempo de execução (serverless na Vercel).
   outputFileTracingIncludes: {
     "/api/pdf": ["./public/logo/**/*"],
+    "/api/pdf/comissoes": ["./public/logo/**/*"],
     "/api/cron/relatorio-diario": ["./public/logo/**/*"],
     "/configuracoes": ["./public/logo/**/*"],
   },
