@@ -165,6 +165,7 @@ export function ComissaoPdf({
             Regra da comissão: {formatarBRL(COMISSAO_GEIZE_BAIXA)} por empréstimo de até{" "}
             {formatarBRL(LIMITE_COMISSAO_GEIZE)} e {formatarBRL(COMISSAO_GEIZE_ALTA)} por empréstimo acima de{" "}
             {formatarBRL(LIMITE_COMISSAO_GEIZE)}.
+            {r.linhas.some((l) => l.manual) && " Onde aparece “valor combinado”, a comissão foi definida à parte."}
           </Text>
 
           {r.linhas.length === 0 ? (
@@ -197,6 +198,8 @@ export function ComissaoPdf({
                       ]}
                     >
                       {v}
+                      {c === 4 && l.manual ? "\n" : ""}
+                      {c === 4 && l.manual ? <Text style={{ fontSize: 6.5, color: SUAVE, fontFamily: "Helvetica" }}>valor combinado</Text> : null}
                     </Text>
                   ))}
                 </View>
