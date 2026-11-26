@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirUsuario } from "@/lib/auth";
-import { calcularComissao } from "@/lib/domain/comissao";
+import { calcularComissao, validarComissaoManual } from "@/lib/domain/comissao";
 import { hojeSP } from "@/lib/domain/datas";
 import {
   calcularEmprestimo,
@@ -260,6 +260,51 @@ export async function alterarDataPagamento(parcelaId: string, data: string): Pro
     .eq("status_pagamento", "paga");
   if (error) {
     console.error("[alterarDataPagamento]", error.message);
+    return { erro: ERRO_GENERICO };
+  }
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/* ------------------------------- Comissões ------------------------------- */
+
+/**
+ * Define a comissão de um empréstimo de cliente da Geize.
+ * `valor` = texto digitado (ex.: "50,00"); `null` = voltar ao cálculo automático.
+ * Só altera o campo `comissao` do empréstimo (fica registrado no Histórico).
+ */
+export async function definirComissao(emprestimoId: string, valor: string | null): Promise<ResultadoAcao> {
+  const { supabase } = await exigirUsuario();
+  if (!UUID.test(emprestimoId)) return { erro: "Empréstimo inválido." };
+
+  const { data: emp, error: erroBusca } = await supabase
+    .from("emprestimos")
+    .select("id, valor_emprestado, cliente_id")
+    .eq("id", emprestimoId)
+    .maybeSingle();
+  if (erroBusca || !emp) return { erro: "Empréstimo não encontrado." };
+
+  const { data: cliente } = await supabase
+    .from("clientes")
+    .select("indicado_por")
+    .eq("id", emp.cliente_id)
+    .maybeSingle();
+  const indicadoPor = lerIndicadoPor(cliente?.indicado_por);
+  if (indicadoPor !== "geize") return { erro: "Só clientes indicados pela Geize têm comissão." };
+
+  const valorEmprestado = Number(emp.valor_emprestado);
+  let comissao: number;
+  if (valor === null) {
+    comissao = calcularComissao(valorEmprestado, indicadoPor);
+  } else {
+    const r = validarComissaoManual(lerValorBR(valor), valorEmprestado);
+    if (!r.ok) return { erro: r.erro };
+    comissao = r.valor;
+  }
+
+  const { error } = await supabase.from("emprestimos").update({ comissao }).eq("id", emprestimoId);
+  if (error) {
+    console.error("[definirComissao]", error.message);
     return { erro: ERRO_GENERICO };
   }
   revalidatePath("/", "layout");
