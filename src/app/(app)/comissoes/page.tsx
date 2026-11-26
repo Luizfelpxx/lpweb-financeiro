@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import BotaoPdf from "@/components/BotaoPdf";
+import ComissaoManual from "./ComissaoManual";
 import { Stat, Titulo, Vazio } from "@/components/Ui";
 import { botaoSecundario, campo, cartao } from "@/components/estilos";
 import { exigirUsuario } from "@/lib/auth";
@@ -95,6 +96,11 @@ export default async function PaginaComissoes({
                     {r.linhas.length} {r.linhas.length === 1 ? "empréstimo indicado" : "empréstimos indicados"} • R$ 50,00
                     até R$ 1.000,00 e R$ 100,00 acima disso
                   </p>
+                  <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">
+                    Para combinar outro valor com um cliente, toque em “Alterar” na comissão dele.
+                    {r.linhas.some((l) => l.manual) &&
+                      ` ${r.linhas.filter((l) => l.manual).length} com valor manual neste mês.`}
+                  </p>
                 </div>
               )}
               <div className="mb-3 grid grid-cols-2 gap-3">
@@ -109,7 +115,7 @@ export default async function PaginaComissoes({
                     <thead>
                       <tr className="border-b border-borda text-left text-xs uppercase tracking-wide text-suave">
                         <th className="px-3 py-2">Cliente</th>
-                        <th className="px-3 py-2">Data</th>
+                        <th className="hidden px-3 py-2 sm:table-cell">Data</th>
                         <th className="px-3 py-2 text-right">Valor emprestado</th>
                         <th className="px-3 py-2 text-right">Comissão</th>
                       </tr>
@@ -121,18 +127,35 @@ export default async function PaginaComissoes({
                             <Link href={`/clientes/${l.clienteId}`} className="underline-offset-2 hover:underline">
                               {l.cliente}
                             </Link>
+                            <span className="block text-xs font-normal text-suave sm:hidden">
+                              {formatarData(l.dataEmprestimo)}
+                            </span>
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">{formatarData(l.dataEmprestimo)}</td>
+                          <td className="hidden px-3 py-2 whitespace-nowrap sm:table-cell">
+                            {formatarData(l.dataEmprestimo)}
+                          </td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">{formatarBRL(l.valorEmprestado)}</td>
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {l.comissao > 0 ? formatarBRL(l.comissao) : "—"}
+                          <td className="px-3 py-2 text-right align-top">
+                            {f === "geize" ? (
+                              <ComissaoManual
+                                emprestimoId={l.emprestimoId}
+                                comissao={l.comissao}
+                                comissaoAutomatica={l.comissaoAutomatica}
+                                manual={l.manual}
+                              />
+                            ) : l.comissao > 0 ? (
+                              formatarBRL(l.comissao)
+                            ) : (
+                              "—"
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-agua bg-destaque font-bold">
-                        <td className="px-3 py-2" colSpan={2}>
+                        <td className="px-3 py-2 sm:hidden">Total do mês</td>
+                        <td className="hidden px-3 py-2 sm:table-cell" colSpan={2}>
                           Total do mês
                         </td>
                         <td className="px-3 py-2 text-right">{formatarBRL(r.totalEmprestado)}</td>
